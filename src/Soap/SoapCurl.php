@@ -56,6 +56,9 @@ class SoapCurl extends SoapBase implements SoapInterface
         $request = '',
         $soapheader = null
     ) {
+        //check or create key files
+        //before send request
+        $this->saveTemporarilyKeyFiles();
         $response = '';
         $envelope = $this->makeEnvelopeSoap(
             $request,

@@ -154,11 +154,6 @@ abstract class SoapBase implements SoapInterface
     ) {
         $this->logger = $logger;
         $this->loadCertificate($certificate);
-        $this->setTemporaryFolder(sys_get_temp_dir() . '/sped/');
-
-        if (null !== $certificate) {
-            $this->saveTemporarilyKeyFiles();
-        }
     }
 
     /**
@@ -226,34 +221,44 @@ abstract class SoapBase implements SoapInterface
     public function setEncriptPrivateKey($encript = true)
     {
         $this->encriptPrivateKey = $encript;
-        if (null !== $this->filesystem) {
-            $this->removeTemporarilyFiles();
-        }
-        if (null !== $this->certificate) {
-            $this->saveTemporarilyKeyFiles();
-        }
         return $this->encriptPrivateKey;
     }
-
+   
     /**
      * Set another temporayfolder for saving certificates for SOAP utilization
-     * @param string $folderRealPath
+     * @param string | null $folderRealPath
      * @return void
      */
-    public function setTemporaryFolder($folderRealPath)
+    public function setTemporaryFolder($folderRealPath = null)
     {
-        if (null !== $this->filesystem) {
-            $this->removeTemporarilyFiles();
+        if (empty($folderRealPath)) {
+            $path = '/sped-'
+                . $this->uid()
+                .'/'
+                . $this->certificate->getCnpj()
+                . '/' ;
+            $folderRealPath = sys_get_temp_dir().$path;
         }
-
+        if (substr($folderRealPath, -1) !== '/') {
+            $folderRealPath .= '/';
+        }
         $this->tempdir = $folderRealPath;
         $this->setLocalFolder($folderRealPath);
-
-        if (null !== $this->certificate) {
-            $this->saveTemporarilyKeyFiles();
+    }
+    
+    /**
+     * Return uid from user
+     * @return string
+     */
+    protected function uid()
+    {
+        if (function_exists('posix_getuid')) {
+            return posix_getuid();
+        } else {
+            return getmyuid();
         }
     }
-
+ 
     /**
      * Set Local folder for flysystem
      * @param string $folder
@@ -454,28 +459,35 @@ abstract class SoapBase implements SoapInterface
         return $envelopeAttributes;
     }
 
-
     /**
      * Temporarily saves the certificate keys for use cURL or SoapClient
      * @return void
      */
     public function saveTemporarilyKeyFiles()
     {
+        //certs already exists
+        if (!empty($this->certsdir)) {
+            return;
+        }
         if (!is_object($this->certificate)) {
             throw new RuntimeException(
                 'Certificate not found.'
             );
         }
-        $this->certsdir = $this->certificate->getCnpj() . '/certs/';
-        $this->prifile = $this->certsdir . Strings::randomString(10) . '.pem';
-        $this->pubfile = $this->certsdir . Strings::randomString(10) . '.pem';
-        $this->certfile = $this->certsdir . Strings::randomString(10) . '.pem';
+        if (empty($this->filesystem)) {
+            $this->setTemporaryFolder();
+        }
+        //clear dir cert
+        $this->removeTemporarilyFiles();
+        $this->certsdir = 'certs/';
+        $this->prifile = $this->randomName();
+        $this->pubfile = $this->randomName();
+        $this->certfile = $this->randomName();
         $ret = true;
+        //load private key pem
         $private = $this->certificate->privateKey;
         if ($this->encriptPrivateKey) {
-            //cria uma senha temporária ALEATÓRIA para salvar a chave primaria
-            //portanto mesmo que localizada e identificada não estará acessível
-            //pois sua senha não existe além do tempo de execução desta classe
+            //replace private key pem with password
             $this->temppass = Strings::randomString(16);
             //encripta a chave privada entes da gravação do filesystem
             openssl_pkey_export(
@@ -502,6 +514,20 @@ abstract class SoapBase implements SoapInterface
             );
         }
     }
+    
+    /**
+     * Create a unique random file name
+     * @param integer $n
+     * @return string
+     */
+    protected function randomName($n = 10)
+    {
+        $name = $this->certsdir . Strings::randomString($n) . '.pem';
+        if (!$this->filesystem->has($name)) {
+            return $name;
+        }
+        $this->randomName($n+5);
+    }
 
     /**
      * Delete all files in folder
@@ -509,33 +535,23 @@ abstract class SoapBase implements SoapInterface
      */
     public function removeTemporarilyFiles()
     {
+        if (empty($this->filesystem) || empty($this->certsdir)) {
+            return;
+        }
+        //remove os certificados
+        $this->filesystem->delete($this->certfile);
+        $this->filesystem->delete($this->prifile);
+        $this->filesystem->delete($this->pubfile);
+        //remove todos os arquivos antigos
         $contents = $this->filesystem->listContents($this->certsdir, true);
-        //define um limite de $waitingTime min, ou seja qualquer arquivo criado a mais
-        //de $waitingTime min será removido
-        //NOTA: quando ocorre algum erro interno na execução do script, alguns
-        //arquivos temporários podem permanecer
-        //NOTA: O tempo default é de 45 minutos e pode ser alterado diretamente nas
-        //propriedades da classe, esse tempo entre 5 a 45 min é recomendável pois
-        //podem haver processos concorrentes para um mesmo usuário. Esses processos
-        //como o DFe podem ser mais longos, dependendo a forma que o aplicativo
-        //utilize a API. Outra solução para remover arquivos "perdidos" pode ser
-        //encontrada oportunamente.
         $dt = new \DateTime();
-        $tint = new \DateInterval("PT" . $this->waitingTime . "M");
+        $tint = new \DateInterval("PT".$this->waitingTime."M");
         $tint->invert = 1;
         $tsLimit = $dt->add($tint)->getTimestamp();
         foreach ($contents as $item) {
             if ($item['type'] == 'file') {
-                if ($item['path'] == $this->prifile
-                    || $item['path'] == $this->pubfile
-                    || $item['path'] == $this->certfile
-                ) {
-                    $this->filesystem->delete($item['path']);
-                    continue;
-                }
                 $timestamp = $this->filesystem->getTimestamp($item['path']);
                 if ($timestamp < $tsLimit) {
-                    //remove arquivos criados a mais de 45 min
                     $this->filesystem->delete($item['path']);
                 }
             }

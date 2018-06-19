@@ -32,7 +32,7 @@ use DOMElement;
 
 class Signer
 {
-    private static $canonical = [true,false,null,null];
+    const CANONICAL = [true,false,null,null];
     
     /**
      * Make Signature tag
@@ -52,12 +52,9 @@ class Signer
         $tagname,
         $mark = 'Id',
         $algorithm = OPENSSL_ALGO_SHA1,
-        $canonical = [true,false,null,null],
+        $canonical = self::CANONICAL,
         $rootname = ''
     ) {
-        if (!empty($canonical)) {
-            self::$canonical = $canonical;
-        }
         if (empty($content)) {
             throw SignerException::isNotXml();
         }
@@ -86,7 +83,7 @@ class Signer
                 $algorithm,
                 $canonical
             );
-        };
+        }
         return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
             . $dom->saveXML($dom->documentElement, LIBXML_NOXMLDECL);
     }
@@ -109,7 +106,7 @@ class Signer
         DOMElement $node,
         $mark,
         $algorithm = OPENSSL_ALGO_SHA1,
-        $canonical = [true,false,null,null]
+        $canonical = self::CANONICAL
     ) {
         $nsDSIG = 'http://www.w3.org/2000/09/xmldsig#';
         $nsCannonMethod = 'http://www.w3.org/TR/2001/REC-xml-c14n-20010315';
@@ -203,16 +200,15 @@ class Signer
     public static function isSigned(
         $content,
         $tagname = '',
-        $canonical = [true,false,null,null]
+        $canonical = self::CANONICAL
     ) {
-        if (self::existsSignature($content)) {
-            if (self::digestCheck($content, $tagname, $canonical)) {
-                if (self::signatureCheck($content, $canonical)) {
-                    return true;
-                }
-            }
+        if (!self::existsSignature($content)) {
+            return false;
         }
-        return false;
+        if (!self::digestCheck($content, $tagname, $canonical)) {
+            return false;
+        }
+        return self::signatureCheck($content, $canonical);
     }
     
     /**
@@ -230,10 +226,7 @@ class Signer
         $dom->preserveWhiteSpace = false;
         $dom->loadXML($content);
         $signature = $dom->getElementsByTagName('Signature')->item(0);
-        if (empty($signature)) {
-            return false;
-        }
-        return true;
+        return !empty($signature);
     }
     
     /**
@@ -244,7 +237,7 @@ class Signer
      */
     public static function signatureCheck(
         $xml,
-        $canonical = [true,false,null,null]
+        $canonical = self::CANONICAL
     ) {
         $dom = new \DOMDocument('1.0', 'utf-8');
         $dom->formatOutput = false;
@@ -287,7 +280,7 @@ class Signer
     public static function digestCheck(
         $xml,
         $tagname = '',
-        $canonical = [true,false,null,null]
+        $canonical = self::CANONICAL
     ) {
         $dom = new \DOMDocument('1.0', 'utf-8');
         $dom->formatOutput = false;
@@ -344,7 +337,7 @@ class Signer
     private static function makeDigest(
         DOMNode $node,
         $algorithm,
-        $canonical = [true,false,null,null]
+        $canonical = self::CANONICAL
     ) {
         //calcular o hash dos dados
         $c14n = self::canonize($node, $canonical);
@@ -360,7 +353,7 @@ class Signer
      */
     private static function canonize(
         DOMNode $node,
-        $canonical = [true,false,null,null]
+        $canonical = self::CANONICAL
     ) {
         return $node->C14N(
             $canonical[0],
