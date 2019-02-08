@@ -12,6 +12,8 @@ namespace NFePHP\Common;
  * @link       http://github.com/nfephp-org/nfephp for the canonical source repository
  */
 
+use ForceUTF8\Encoding;
+
 class Strings
 {
     /**
@@ -22,16 +24,96 @@ class Strings
      */
     public static function replaceSpecialsChars($string)
     {
-        $string = trim($string);
-        $aFind = ['&','á','à','ã','â','é','ê','í','ó','ô','õ','ú','ü',
-            'ç','Á','À','Ã','Â','É','Ê','Í','Ó','Ô','Õ','Ú','Ü','Ç'];
-        $aSubs = ['e','a','a','a','a','e','e','i','o','o','o','u','u',
-            'c','A','A','A','A','E','E','I','O','O','O','U','U','C'];
-        $newstr = str_replace($aFind, $aSubs, $string);
-        $newstr = preg_replace("/[^a-zA-Z0-9 @,-_.;:\/]/", "", $newstr);
-        return $newstr;
+        $string = self::squashCharacters($string);
+        $string = str_replace('&', 'e', $string);
+        $string = preg_replace("/[^a-zA-Z0-9 @#,-_.;:$%\/]/", "", $string);
+        return preg_replace("/[<>]/", "", $string);
     }
     
+    /**
+     * Clear inputs for build in XML
+     * Only UTF-8 characters is acceptable
+     * & isolated, less than, greater than, quotation marks and apostrophes
+     * should be replaced by their html equivalent
+     * Carriage Return, Tab and Line Feed is not acceptable in strings
+     * Multiple spaces is not acceptable in strings
+     * And no other control character is acceptable either
+     * @param string|null $input
+     * @return string|null
+     */
+    public static function replaceUnacceptableCharacters($input)
+    {
+        if (empty($input)) {
+            return $input;
+        }
+        //& isolated, less than, greater than, quotation marks and apostrophes
+        //should be replaced by their html equivalent
+        $input = str_replace(
+            ['& ','<','>','"',"'"],
+            ['&amp; ','&lt;','&gt;','&quot;','&#39;'],
+            $input
+        );
+        $input = self::normalize($input);
+        return trim($input);
+    }
+    
+    /**
+     * Converts all UTF-8 remains in ASCII
+     * @param string $input
+     * @return string
+     */
+    public static function toASCII($input)
+    {
+        $input = self::normalize($input);
+        $input = self::squashCharacters($input);
+        return mb_convert_encoding($input, 'ascii');
+    }
+    
+    /**
+     * Replaces all accented characters of their ASCII equivalents
+     * @param string $input
+     * @return string
+     */
+    public static function squashCharacters($input)
+    {
+        $input = trim($input);
+        $aFind = ['á','à','ã','â','é','ê','í','ó','ô','õ','ú','ü',
+            'ç','Á','À','Ã','Â','É','Ê','Í','Ó','Ô','Õ','Ú','Ü','Ç'];
+        $aSubs = ['a','a','a','a','e','e','i','o','o','o','u','u',
+            'c','A','A','A','A','E','E','I','O','O','O','U','U','C'];
+        return str_replace($aFind, $aSubs, $input);
+    }
+    
+    /**
+     * Replace all non-UTF-8 chars to UTF-8
+     * Remove all control chars
+     * Remove all multiple spaces
+     * @param string $input
+     * @return string
+     */
+    public static function normalize($input)
+    {
+        //Carriage Return, Tab and Line Feed is not acceptable in strings
+        $input = str_replace(["\r","\t","\n"], "", $input);
+        //Multiple spaces is not acceptable in strings
+        $input = preg_replace('/(?:\s\s+)/', ' ', $input);
+        //Only UTF-8 characters is acceptable
+        $input = Encoding::fixUTF8($input);
+        $input = preg_replace(
+            '/[\x00-\x08\x10\x0B\x0C\x0E-\x19\x7F]'.
+            '|[\x00-\x7F][\x80-\xBF]+'.
+            '|([\xC0\xC1]|[\xF0-\xFF])[\x80-\xBF]*'.
+            '|[\xC2-\xDF]((?![\x80-\xBF])|[\x80-\xBF]{2,})'.
+            '|[\xE0-\xEF](([\x80-\xBF](?![\x80-\xBF]))|(?![\x80-\xBF]{2})|[\x80-\xBF]{3,})/S',
+            '',
+            $input
+        );
+        $input = preg_replace('/\xE0[\x80-\x9F][\x80-\xBF]'.
+            '|\xED[\xA0-\xBF][\x80-\xBF]/S', '', $input);
+        //And no other control character is acceptable either
+        return preg_replace('/[[:cntrl:]]/', '', $input);
+    }
+
     /**
      * Remove all non numeric characters from string
      * @param string $string
