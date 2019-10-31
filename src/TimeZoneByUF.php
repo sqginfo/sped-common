@@ -19,35 +19,35 @@ use NFePHP\Common\UFList;
 class TimeZoneByUF
 {
     protected static $tzd = [
-        'AC'=>'America/Rio_Branco',
-        'AL'=>'America/Maceio',
-        'AM'=>'America/Manaus',
-        'AP'=>'America/Belem',
-        'BA'=>'America/Bahia',
-        'CE'=>'America/Fortaleza',
-        'DF'=>'America/Sao_Paulo',
-        'ES'=>'America/Sao_Paulo',
-        'GO'=>'America/Sao_Paulo',
-        'MA'=>'America/Fortaleza',
-        'MG'=>'America/Sao_Paulo',
-        'MS'=>'America/Campo_Grande',
-        'MT'=>'America/Cuiaba',
-        'PA'=>'America/Belem',
-        'PB'=>'America/Fortaleza',
-        'PE'=>'America/Recife',
-        'PI'=>'America/Fortaleza',
-        'PR'=>'America/Sao_Paulo',
-        'RJ'=>'America/Sao_Paulo',
-        'RN'=>'America/Fortaleza',
-        'RO'=>'America/Porto_Velho',
-        'RR'=>'America/Boa_Vista',
-        'RS'=>'America/Sao_Paulo',
-        'SC'=>'America/Sao_Paulo',
-        'SE'=>'America/Maceio',
-        'SP'=>'America/Sao_Paulo',
-        'TO'=>'America/Araguaina'
+        'AC' => 'America/Rio_Branco',
+        'AL' => 'America/Maceio',
+        'AM' => 'America/Manaus',
+        'AP' => 'America/Belem',
+        'BA' => 'America/Bahia',
+        'CE' => 'America/Fortaleza',
+        'DF' => 'Etc/GMT+3',
+        'ES' => 'Etc/GMT+3',
+        'GO' => 'Etc/GMT+3',
+        'MA' => 'America/Fortaleza',
+        'MG' => 'Etc/GMT+3',
+        'MS' => 'America/Campo_Grande',
+        'MT' => 'America/Cuiaba',
+        'PA' => 'America/Belem',
+        'PB' => 'America/Fortaleza',
+        'PE' => 'America/Recife',
+        'PI' => 'America/Fortaleza',
+        'PR' => 'Etc/GMT+3',
+        'RJ' => 'Etc/GMT+3',
+        'RN' => 'America/Fortaleza',
+        'RO' => 'America/Porto_Velho',
+        'RR' => 'America/Boa_Vista',
+        'RS' => 'Etc/GMT+3',
+        'SC' => 'Etc/GMT+3',
+        'SE' => 'America/Maceio',
+        'SP' => 'Etc/GMT+3',
+        'TO' => 'America/Araguaina'
     ];
-   
+
     /**
      * Return timezone string
      * @param string $uf
